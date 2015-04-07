@@ -3,6 +3,7 @@ from math import sqrt
 def manhatten_distance(rating1, rating2):
     """
     z = |x1-y1| + |x2-y2| + .... +|xn+yn|
+    for case that data is dense
     """
     distance = 0
     for key in rating1:
@@ -16,6 +17,7 @@ def manhatten_distance(rating1, rating2):
 def minkowski(rating1, rating2, r):
     """
     z = (|x1-y1|^r+.....+|xn + yn|^r)^(1/r)
+    for case that data is dense
     """
     distance = 0
     common_ratings = False
@@ -31,7 +33,7 @@ def minkowski(rating1, rating2, r):
 
 def pearson_correlation(rating1, rating2):
     """
-    find the correation coefficient of two users based on ratings on same stuff.
+    for case is subject to grade-inflation
 
     """
     n = 0
@@ -66,3 +68,27 @@ def pearson_correlation(rating1, rating2):
     result = (sum_multiple - avg_multiple_sum) / denominator
 
     return result
+
+
+def consine(rating1, rating2):
+    """
+    for case which data is sparse
+    """
+    pow_value1 = 0
+    pow_value2 = 0
+
+    multiple_value = 0
+
+    for key in rating1:
+        value1 = rating1[key]
+        value2  = rating2[key] if key in rating2 else 0
+
+        pow_value1 += pow(value1, 2)
+        pow_value2 += pow(value2, 2)
+        multiple_value += value1 * value2
+
+
+    denominator = sqrt(pow_value1) * sqrt(pow_value2)
+    if denominator == 0:
+        return 0
+    return multiple_value / denominator

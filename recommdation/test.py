@@ -1,5 +1,6 @@
 from data import users
-from recommdation import manhatten_distance, minkowski, pearson_correlation
+from recommdation import manhatten_distance, minkowski,\
+pearson_correlation, consine
 
 
 def computeNearestNeighbor(username, users):
@@ -56,10 +57,13 @@ def main():
     # recommendation = recommend('Hailey', users)
     # print recommendation
 
-    correlation = cal_correlation('Angelica', 'Bill')
-    print correlation
-    correlation = cal_correlation('Angelica', 'Hailey')
-    print correlation
+    # correlation = cal_correlation('Angelica', 'Bill')
+    # print correlation
+    # correlation = cal_correlation('Angelica', 'Hailey')
+    # print correlation
+
+    consin_value = consine(users['Angelica'], users['Veronica'])
+    print consin_value
 
 
 if __name__ == '__main__':
