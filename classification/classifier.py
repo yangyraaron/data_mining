@@ -27,8 +27,8 @@ class SingleClassifier(object):
         self._test_data = None
 
         self.init_data()
-        self.normalize_col(0)
-        self.normalize_col(1)
+        for i in xrange(len(self._training_data[0][1])):
+            self.normalize_col(i)
 
     def init_data(self):
         """
@@ -58,7 +58,7 @@ class SingleClassifier(object):
             for i in xrange(len(fields)):
                 field_format = data_format[i]
                 if field_format == 'num':
-                    vector.append(int(fields[i]))
+                    vector.append(float(fields[i]))
                 elif field_format == 'comment':
                     ignore.append(fields[i])
                 elif field_format == 'class':
@@ -213,6 +213,10 @@ def test_single_classifier():
     test single classifier
     """
     classifier = SingleClassifier('data/athletes_training_set.txt', 'data/athletes_test_set.txt')
+    print classifier.test()
+    classifier = SingleClassifier('data/iris_training_set.data', 'data/iris_test_set.data')
+    print classifier.test()
+    classifier = SingleClassifier('data/mpg_training_set.txt', 'data/mpg_test_set.txt')
     print classifier.test()
 
 
