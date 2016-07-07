@@ -40,7 +40,7 @@ class SingleClassifier(object):
 
         _, test_data = self.read_data(self._test_file_path)
         self._test_data = test_data
-        
+
     def read_data(self, file_path):
         """
         read data from file and init variables
@@ -65,10 +65,10 @@ class SingleClassifier(object):
                     classification = fields[i]
 
             data.append((classification, vector, ignore))
-        
+
         return data_format, data
 
-    
+
     def normalize_col(self, col_index):
         """
         normalize columns
@@ -91,12 +91,12 @@ class SingleClassifier(object):
         for i in xrange(len(vector_list)):
             median, asd = self._median_deviation[i]
             vector_list[i] = (vector_list[i] - median)/asd
-        
+
         return vector_list
 
     def nearest_neighbor(self, item_vector):
         """
-        get nearest neighbor 
+        get nearest neighbor
         :@param : item vector
         """
         distances = [(manhattan(item_vector, item[1]), item) for item in self._training_data]
@@ -126,7 +126,7 @@ class SingleClassifier(object):
                 suc_count += 1
             else:
                 failed_count += 1
-        
+
         total = suc_count + failed_count
 
         return float(suc_count) / total
