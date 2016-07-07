@@ -13,16 +13,17 @@ class SingleClassifier(object):
     """
     DEFAULT_SEPARATOR = '\t'
 
-    def __init__(self, training_file_path, test_file_path):
+    def __init__(self, training_files_path, test_file_path, data_format):
         """
         initialization
         :@param training_file_path : the path of training file
         :@param test_file_path : the path of testing file
+        :@param data_format: the format of the data
         """
         self._median_deviation = []
-        self._training_file_path = training_file_path
+        self._training_file_path = training_files_path
         self._test_file_path = test_file_path
-        self._format = None
+        self._format = data_format
         self._training_data = None
         self._test_data = None
 
@@ -34,11 +35,14 @@ class SingleClassifier(object):
         """
         read data from file and init variables
         """
-        data_format, training_data = self.read_data(self._training_file_path)
-        self._format = data_format
+        training_data = []
+        for training_file in self._training_file_path:
+            single_training_data = self.read_data(training_file)
+            training_data.extend(single_training_data)
+
         self._training_data = training_data
 
-        _, test_data = self.read_data(self._test_file_path)
+        test_data = self.read_data(self._test_file_path)
         self._test_data = test_data
 
     def read_data(self, file_path):
@@ -50,15 +54,18 @@ class SingleClassifier(object):
         file_handler.close()
 
         data = []
-        data_format = lines[0].strip().split(self.DEFAULT_SEPARATOR)
         for line in lines[1:]:
             fields = line.strip().split(self.DEFAULT_SEPARATOR)
             ignore = []
             vector = []
             for i in xrange(len(fields)):
-                field_format = data_format[i]
+                field_format = self._format[i]
                 if field_format == 'num':
-                    vector.append(float(fields[i]))
+                    try:
+                        vector.append(float(fields[i]))
+                    except Exception:
+                        print "can't convert value {} to float".format(fields[i])
+
                 elif field_format == 'comment':
                     ignore.append(fields[i])
                 elif field_format == 'class':
@@ -66,8 +73,7 @@ class SingleClassifier(object):
 
             data.append((classification, vector, ignore))
 
-        return data_format, data
-
+        return data
 
     def normalize_col(self, col_index):
         """
@@ -81,7 +87,7 @@ class SingleClassifier(object):
 
         self._median_deviation.append((median, asd))
         for v in self._training_data:
-            v[1][col_index] = (v[1][col_index]-median) / asd
+            v[1][col_index] = (v[1][col_index] - median) / asd
 
     def normalize_vector(self, vector):
         """
@@ -90,7 +96,7 @@ class SingleClassifier(object):
         vector_list = list(vector)
         for i in xrange(len(vector_list)):
             median, asd = self._median_deviation[i]
-            vector_list[i] = (vector_list[i] - median)/asd
+            vector_list[i] = (vector_list[i] - median) / asd
 
         return vector_list
 
@@ -99,7 +105,8 @@ class SingleClassifier(object):
         get nearest neighbor
         :@param : item vector
         """
-        distances = [(manhattan(item_vector, item[1]), item) for item in self._training_data]
+        distances = [(manhattan(item_vector, item[1]), item)
+                     for item in self._training_data]
 
         return min(distances)
 
@@ -119,6 +126,7 @@ class SingleClassifier(object):
         """
         suc_count = 0
         failed_count = 0
+        result = {}
 
         for cls, vector, _ in self._test_data:
             d_cls = self.classify(vector)
@@ -127,9 +135,14 @@ class SingleClassifier(object):
             else:
                 failed_count += 1
 
+            cls_result = result.setdefault(cls, {})
+            cls_result.setdefault(d_cls, 0)
+            cls_result[d_cls] += 1
+
         total = suc_count + failed_count
 
-        return float(suc_count) / total
+        return round(float(suc_count) / total, 4), result
+
 
 class NFolderCrossValidationClassifier(object):
     """
@@ -138,17 +151,20 @@ class NFolderCrossValidationClassifier(object):
     """
     DEFAULT_SEPARATOR = '\t'
 
-    def __init__(self, file_path, class_index, separator='\t', bucket_size=10):
+    def __init__(self, file_path, class_index, data_format, separator='\t', bucket_size=10):
         """
         initialization
         :@param file_name: input file path
         :@param class_col_index: the class index of vector, as every line of file will be converted a vector
+        :@param data_format: the format of data
         :@param separator: separator of line of input file path
         :@param folder_size: how many sub files (buckets) will files divided into
         """
         self._file_path = file_path
         self._bucket_size = bucket_size
         self._class_index = class_index
+        self._data_format = data_format.split(separator)
+        print self._data_format
         self._separator = separator
         self._bucket_name = os.path.splitext(os.path.basename(file_path))[0]
 
@@ -158,6 +174,8 @@ class NFolderCrossValidationClassifier(object):
         self._buckets = []
         for _ in xrange(self._bucket_size):
             self._buckets.append([])
+
+        self._results = {}
 
     def _group_category(self):
         """
@@ -190,35 +208,113 @@ class NFolderCrossValidationClassifier(object):
                 num = (num + 1) % self._bucket_size
         # write each bucket to sub file
         for bucket_index in xrange(self._bucket_size):
-            sub_file = open("data/%s-%02i" % (self._bucket_name, bucket_index+1), 'w')
+            sub_file = open("data/%s-%02i" %
+                            (self._bucket_name, bucket_index + 1), 'w')
             for item in self._buckets[bucket_index]:
                 sub_file.write(item)
             sub_file.close()
 
+    def classify(self):
+        """
+        classify
+        """
+        index_list = list(xrange(self._bucket_size))
+        for test_index in xrange(self._bucket_size):
+            training_files = []
+            test_file = None
+            test_index = test_index + 1
+            for index in index_list:
+                index = index + 1
+                file_path = "data/%s-%02i" % (self._bucket_name, index)
+                if test_index == index:
+                    test_file = file_path
+                else:
+                    training_files.append(file_path)
 
-def main():
+            classifier = SingleClassifier(
+                training_files, test_file, self._data_format)
+            _, distribution = classifier.test()
+
+            for category, value in distribution.iteritems():
+                self._results.setdefault(category, {})
+                for sub_category, sub_value in value.iteritems():
+                    self._results[category].setdefault(sub_category, 0)
+                    self._results[category][sub_category] += sub_value
+
+    def print_result(self):
+        """
+        print result
+        """
+        categories = list(self._results.keys())
+        categories.sort()
+
+        header = "            "
+        sub_header = "        +"
+        for category in categories:
+            header += category + "  "
+            sub_header += "----+"
+        print header
+        print sub_header
+
+        total = 0.0
+        correct = 0.0
+
+        for category in categories:
+            row = category + "    |"
+            for c2 in categories:
+                if c2 in self._results[category]:
+                    count = self._results[category][c2]
+                else:
+                    count = 0
+                row += " %2i |" % count
+                total += count
+                if c2 == category:
+                    correct += count
+            print row
+        print sub_header
+        print "\n%5.3f percent correct" % ((correct * 100) / total)
+        print "total of %i instances" % total
+
+
+def test_nfold_classifier():
     """
     main entrence
     """
-    print 'create classifier and build buckets'
+    # print 'create classifier and build buckets'
 
-    classifier = NFolderCrossValidationClassifier('data/auto-mpg.data', 0)
-    classifier.build_buckets()
+    classifier = NFolderCrossValidationClassifier(
+        'data/auto-mpg.data', 0, 'class	num	num	num	num	num	comment')
+    # classifier.build_buckets()
 
-    print 'build buckets successfully'
+    # print 'build buckets successfully'
+
+    print "start training"
+    classifier.classify()
+    classifier.print_result()
 
 
 def test_single_classifier():
     """
     test single classifier
     """
-    classifier = SingleClassifier('data/athletes_training_set.txt', 'data/athletes_test_set.txt')
+    data_format = 'comment	class	num	num'.split('\t')
+    training_files = ['data/athletes_training_set.txt']
+    classifier = SingleClassifier(
+        training_files, 'data/athletes_test_set.txt', data_format)
     print classifier.test()
-    classifier = SingleClassifier('data/iris_training_set.data', 'data/iris_test_set.data')
+
+    data_format = 'num	num	num	num	class'.split('\t')
+    training_files = ['data/iris_training_set.data']
+    classifier = SingleClassifier(
+        training_files, 'data/iris_test_set.data', data_format)
     print classifier.test()
-    classifier = SingleClassifier('data/mpg_training_set.txt', 'data/mpg_test_set.txt')
+
+    data_format = 'class	num	num	num	num	num	comment'.split('\t')
+    training_files = ['data/mpg_training_set.txt']
+    classifier = SingleClassifier(
+        training_files, 'data/mpg_test_set.txt', data_format)
     print classifier.test()
 
 
 if __name__ == '__main__':
-    test_single_classifier()
+    test_nfold_classifier()

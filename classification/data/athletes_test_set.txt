@@ -1,4 +1,3 @@
-comment	class	num	num
 Aly Raisman	Gymnastics	62	115
 Crystal Langhorne	Basketball	74	190
 Diana Taurasi	Basketball	72	163
