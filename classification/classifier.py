@@ -54,24 +54,26 @@ class SingleClassifier(object):
         file_handler.close()
 
         data = []
-        for line in lines[1:]:
+        for line in lines:
             fields = line.strip().split(self.DEFAULT_SEPARATOR)
             ignore = []
             vector = []
+            is_drop = False
             for i in xrange(len(fields)):
                 field_format = self._format[i]
                 if field_format == 'num':
                     try:
                         vector.append(float(fields[i]))
                     except Exception:
-                        print "can't convert value {} to float".format(fields[i])
+                        print "can't convert value {} to float, this line will be droped".format(fields[i])
+                        is_drop = True
 
                 elif field_format == 'comment':
                     ignore.append(fields[i])
                 elif field_format == 'class':
                     classification = fields[i]
-
-            data.append((classification, vector, ignore))
+            if not is_drop:
+                data.append((classification, vector, ignore))
 
         return data
 
@@ -248,8 +250,8 @@ class NFolderCrossValidationClassifier(object):
         categories = list(self._results.keys())
         categories.sort()
 
-        header = "            "
-        sub_header = "        +"
+        header = "        "
+        sub_header = "    +"
         for category in categories:
             header += category + "  "
             sub_header += "----+"
@@ -260,7 +262,7 @@ class NFolderCrossValidationClassifier(object):
         correct = 0.0
 
         for category in categories:
-            row = category + "    |"
+            row = category + "   |"
             for c2 in categories:
                 if c2 in self._results[category]:
                     count = self._results[category][c2]
