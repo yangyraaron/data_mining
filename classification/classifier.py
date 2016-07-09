@@ -3,6 +3,7 @@ classifiers
 """
 import random
 import os
+import heapq
 
 from algorithm import get_median, get_abs_standard_deviation, manhattan
 
@@ -110,7 +111,7 @@ class SingleClassifier(object):
         distances = [(manhattan(item_vector, item[1]), item)
                      for item in self._training_data]
 
-        return min(distances)
+        return min(distances)[1][0]
 
     def classify(self, item_vector):
         """
@@ -118,9 +119,9 @@ class SingleClassifier(object):
         :@param : item vector
         """
         vector = self.normalize_vector(item_vector)
-        nearest = self.nearest_neighbor(vector)
+        nearest_class = self.nearest_neighbor(vector)
 
-        return nearest[1][0]
+        return nearest_class
 
     def test(self):
         """
@@ -146,6 +147,48 @@ class SingleClassifier(object):
         return round(float(suc_count) / total, 4), result
 
 
+class KNNSingleClassifier(SingleClassifier):
+    """
+    single classifier classify by knn algorithem
+    """
+    def __init__(self, training_files_path, test_file_path, data_format, k):
+        """
+        initialization
+        """
+        super(KNNSingleClassifier, self).__init__(training_files_path, test_file_path, data_format)
+
+        self._k = k
+
+    def knn(self, item_vector):
+        """
+        knn implementation
+        """
+        items = [(manhattan(item_vector, item[1]), item) for item in self._training_data]
+        #get k nearest neighbors by priority queue algorithm
+        neighbors = heapq.nsmallest(self._k, items)
+
+        # get a vote for each neighbor
+        results = {}
+        for neighbor in neighbors:
+            the_class = neighbor[1][0]
+            results.setdefault(the_class, 0)
+            results[the_class] += 1
+
+        result_list = sorted([(result[1], result[0]) for result in results.items()], reverse=True)
+        max_votes = result_list[0][0]
+        possible_answers = [i[1] for i in result_list if i[0] == max_votes]
+
+        answer = random.choice(possible_answers)
+
+        return answer
+
+    def nearest_neighbor(self, item_vector):
+        """
+        overried nearest neighbor
+        """
+        return self.knn(item_vector)
+
+
 class NFolderCrossValidationClassifier(object):
     """
     Classifier build upon ten folder cross validation
@@ -153,10 +196,11 @@ class NFolderCrossValidationClassifier(object):
     """
     DEFAULT_SEPARATOR = '\t'
 
-    def __init__(self, file_path, class_index, data_format, separator='\t', bucket_size=10):
+    def __init__(self, file_path, class_index, data_format, bucket_name=None, separator='\t', bucket_size=10):
         """
         initialization
         :@param file_name: input file path
+        :@param bucket_name: bukect name 
         :@param class_col_index: the class index of vector, as every line of file will be converted a vector
         :@param data_format: the format of data
         :@param separator: separator of line of input file path
@@ -166,9 +210,11 @@ class NFolderCrossValidationClassifier(object):
         self._bucket_size = bucket_size
         self._class_index = class_index
         self._data_format = data_format.split(separator)
-        print self._data_format
         self._separator = separator
-        self._bucket_name = os.path.splitext(os.path.basename(file_path))[0]
+        if not bucket_name:
+            self._bucket_name = os.path.splitext(os.path.basename(file_path))[0]
+        else:
+            self._bucket_name = bucket_name
 
         self._categorized_data = {}
         self._group_category()
@@ -183,6 +229,9 @@ class NFolderCrossValidationClassifier(object):
         """
         build buckets
         """
+        if not self._file_path:
+            return
+            
         with open(self._file_path) as file_handler:
             lines = file_handler.readlines()
 
@@ -233,8 +282,8 @@ class NFolderCrossValidationClassifier(object):
                 else:
                     training_files.append(file_path)
 
-            classifier = SingleClassifier(
-                training_files, test_file, self._data_format)
+            classifier = KNNSingleClassifier(
+                training_files, test_file, self._data_format, 3)
             _, distribution = classifier.test()
 
             for category, value in distribution.iteritems():
@@ -295,6 +344,15 @@ def test_nfold_classifier():
     classifier.print_result()
 
 
+def test_pima_classifier():
+    """
+    test classifier with pima data
+    """
+    classifier = NFolderCrossValidationClassifier('', 0, 'num	num	num	num	num	num	num	num	class', bucket_name='pima_small/pimaSmall')
+    print 'start training'
+    classifier.classify()
+    classifier.print_result()
+
 def test_single_classifier():
     """
     test single classifier
@@ -319,4 +377,5 @@ def test_single_classifier():
 
 
 if __name__ == '__main__':
-    test_nfold_classifier()
+    #test_single_classifier()
+    test_pima_classifier()
