@@ -68,7 +68,6 @@ class SingleClassifier(object):
                     except Exception:
                         print "can't convert value {} to float, this line will be droped".format(fields[i])
                         is_drop = True
-
                 elif field_format == 'comment':
                     ignore.append(fields[i])
                 elif field_format == 'class':
