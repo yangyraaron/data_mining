@@ -1,7 +1,8 @@
 """
 K-nearest neighbars
 """
-from numpy import array, tile
+import os
+from numpy import array, tile, zeros
 import operator
 
 
@@ -42,3 +43,30 @@ def classify(in_x, data_set, labels, k):
                                 reverse=True)
 
     return sorted_class_count[0][0]
+
+
+def file_to_matrix(file_name):
+    """
+    parse a file and store in a matrix
+    """
+    file_path = os.path.join('data', file_name)
+    if not os.path.exists(file_path):
+        print("the file path {} isn't existed".format(file_path))
+        return None, None
+
+    fr = open(file_path)
+    length = len(fr.readlines())
+    mat = zeros((length, 3))
+    class_vector = []
+    fr = open(file_path)
+    index = 0
+    for line in fr.readlines():
+        line = line.strip()
+        cols = line.split('\t')
+        # only store first 3 columns
+        mat[index, :] = cols[0:3]
+        # the last column is the class label
+        class_vector.append(int(cols[-1]))
+        index += 1
+    
+    return mat, class_vector
