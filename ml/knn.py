@@ -68,5 +68,44 @@ def file_to_matrix(file_name):
         # the last column is the class label
         class_vector.append(int(cols[-1]))
         index += 1
-    
+
     return mat, class_vector
+
+def auto_norm(data_set):
+    """
+    auto normalize data set
+    scale formula new_value = (old_value - min)/(max-min)
+    """
+    min_vals = data_set.min(0)
+    max_vals = data_set.max(0)
+    # max - min
+    ranges = max_vals - min_vals
+    norm_ds = zeros(data_set.shape)
+    size = data_set.shape[0]
+    # old value - min
+    norm_ds = data_set - tile(min_vals, (size, 1))
+    # final divide
+    norm_ds = norm_ds / tile(ranges, (size, 1))
+
+    return norm_ds, ranges, min_vals
+
+def dating_test():
+    """
+    test dating for knn
+    """
+    ho_ration = 0.10
+    mat, labels = file_to_matrix('datingTestSet2.txt')
+    norm_mat, ranges, min_values = auto_norm(mat)
+    size = norm_mat.shape[0]
+    testing_count = int(size * ho_ration)
+    error_count = 0.0
+    # 10% data used for testing, 90% data used for training
+    for i in xrange(testing_count):
+        category = classify(norm_mat[i, :],
+                          norm_mat[testing_count:size, :],
+                          labels[testing_count:size], 3)
+        print "classifier get class {0}, actual class is {1}".format(category, labels[i])
+        if category != labels[i]:
+            error_count += 1.0
+
+    print "the total error rate is: %f" % (error_count / float(testing_count))
