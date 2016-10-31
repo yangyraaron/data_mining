@@ -89,6 +89,58 @@ def auto_norm(data_set):
 
     return norm_ds, ranges, min_vals
 
+def img_to_vector(file_name):
+    """
+    convert a 32X32 image to 1X1024 vectir
+    """
+    file_path = os.path.join('data', file_name)
+    if not os.path.exists(file_path):
+        print 'the file {} is not found'.format(file_path)
+
+    vector = zeros((1, 1024))
+    fr = open(file_path)
+    for i in xrange(32):
+        line = fr.readline()
+        for j in xrange(32):
+            vector[0, 32*i + j] = int(line[j])
+
+    return vector
+
+
+def handwriting_test():
+    """
+    test hand written digits
+    """
+    labels = []
+    training_list = os.listdir('data/trainingDigits')
+    training_size = len(training_list)
+    training_mat = zeros((training_size, 1024))
+    for i in xrange(training_size):
+        file_name = training_list[i]
+        file_str = file_name.split('.')[0]
+        class_num = int(file_str.split('_')[0])
+        labels.append(class_num)
+        training_mat[i, :] = img_to_vector('trainingDigits/%s' % file_name)
+    test_list = os.listdir('data/testDigits')
+    error_count = 0.0
+    test_size = len(test_list)
+    for i in xrange(test_size):
+        file_name = test_list[i]
+        file_str = file_name.split('.')[0]
+        class_num = int(file_str.split('_')[0])
+        test_vector = img_to_vector('testDigits/%s' % file_name)
+        classifed_class = classify(test_vector, training_mat, labels, 3)
+
+        print "the classified class is {0}, the real class is {1}"\
+        .format(classifed_class, class_num)
+
+        if classifed_class != class_num:
+            error_count += 1.0
+
+    print 'the total number of errors is: %d' % error_count
+    print 'the total error rate is: %f' % (error_count/float(test_size))
+
+
 def dating_test():
     """
     test dating for knn
