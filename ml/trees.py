@@ -1,6 +1,8 @@
 """
 decision tree module
 """
+import copy
+from collections import Counter
 from math import log
 
 
@@ -61,9 +63,74 @@ def choose_best_feature(data_set):
     return best_feature
 
 
+def majority_cnt(class_list):
+    """
+    find the class has greatest frequency
+    """
+    counter = Counter(class_list)
+    cls, _ = counter.most_common(1)
+
+    return cls
+
+
+def create_tree(data_set, labels):
+    """
+    crate a decision tree
+    """
+    labels = copy.copy(labels)
+    class_list = [ eg[-1] for eg in data_set]
+    # if all classes are same
+    if class_list.count(class_list[0]) == len(class_list):
+        return class_list[0]
+    # only have class feature
+    if len(data_set[0]) == 1:
+        return majority_cnt(class_list)
+    best_feat = choose_best_feature(data_set)
+    best_feat_cls = labels[best_feat]
+    node = {best_feat_cls: {}}
+    del(labels[best_feat])
+    feat_values = [eg[best_feat] for eg in data_set]
+    unique_values = set(feat_values)
+    for value in unique_values:
+        sub_cls = labels[:]
+        sub_ds = splite_dataset(data_set, best_feat, value)
+        node[best_feat_cls][value] = create_tree(sub_ds, sub_cls)
+
+    return node
+
+
+def classify(tree, feat_labels, vector):
+    """
+    classify decision tree
+    """
+    root_cls = tree.keys()[0]
+    node = tree[root_cls]
+    feat_index = feat_labels.index(root_cls)
+    cls_label = ''
+    for cls, ch_node in node.iteritems():
+        if vector[feat_index] == cls:
+            if isinstance(ch_node, dict):
+                cls_label = classify(ch_node, feat_labels, vector)
+            else:
+                cls_label = node[cls]
+    return cls_label
+
+
+def test():
+    """
+    decision tree test
+    """
+    fr = open('data/lenses.txt')
+    lenses = [inst.strip().split('\t') for inst in fr.readlines()]
+    labels = ['age', 'prescript', 'astigmatic', 'tearRate']
+    tree = create_tree(lenses, labels)
+
+    return tree
+
+
 fish_data = [[1, 1, 'yes'],
                  [1, 1, 'yes'],
                  [1, 0, 'no'],
                  [0, 1, 'no'],
                  [0, 1, 'no']]
-fish_labels = ['no surfacing','flippers']
+fish_labels = ['no surfacing', 'flippers']
