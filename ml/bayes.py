@@ -1,7 +1,9 @@
 """
 bayes classification based on probability disitribution
 """
-from numpy import zeros, ones, log10
+import re
+import random
+from numpy import zeros, ones, log10, array
 
 
 def load_dataset():
@@ -35,14 +37,14 @@ def create_vocab_list(data_set):
     return list(vocab_set)
 
 
-def words_to_vector(vocab_list, input_set):
+def bag_of_words_to_vector(vocab_list, input_set):
     """
     convert words to vector
     """
     vector = [0] * len(vocab_list)
     for word in input_set:
         if word in vocab_list:
-            vector[vocab_list.index(word)] = 1
+            vector[vocab_list.index(word)] += 1
         else:
             print "word: %s is not in my vocabulary!" % word
     return vector
@@ -85,3 +87,50 @@ def classify(vector, p0_vec, p1_vec, p_class1):
         return 1
     else:
         return 0
+
+
+def text_parse(str_value):
+    """
+    text parse
+    """
+    tokens = re.split(r'\W*', str_value)
+    return [tok for tok in tokens if len(tok) > 2]
+
+
+def spam_test():
+    """
+    test spam
+    """
+    docs = []; cls_list = []; full_text=[]
+    for i in xrange(1, 26):
+        file_path = 'data/spam/%d.txt' % i
+        word_list = text_parse(open(file_path).read())
+        docs.append(word_list)
+        full_text.extend(word_list)
+        cls_list.append(1)
+        file_path = 'data/ham/%d.txt' % i
+        word_list = text_parse(open(file_path).read())
+        docs.append(word_list)
+        full_text.extend(word_list)
+        cls_list.append(0)
+
+    vocab_list = create_vocab_list(docs)
+    training_set = range(50); test_set = []
+    for i in xrange(10):
+        rand_index = int(random.uniform(0, len(training_set)))
+        test_set.append(training_set[rand_index])
+        del(training_set[rand_index])
+
+    train_mat = []; train_cls = []
+    for doc_index in training_set:
+        train_mat.append(bag_of_words_to_vector(vocab_list, docs[doc_index]))
+        train_cls.append(cls_list[doc_index])
+
+    p0v, p1v, pspam = train(array(train_mat), array(train_cls))
+    error_count = 0
+    for doc_index in test_set:
+        word_vector = bag_of_words_to_vector(vocab_list, docs[doc_index])
+        if classify(array(word_vector), p0v, p1v, pspam) != cls_list[doc_index]:
+            error_count += 1
+
+    print 'error rate is : %f' % (float(error_count) / len(test_set))
