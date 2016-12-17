@@ -1,7 +1,10 @@
 """
 adaboost implementation
 """
-from numpy import ones, matrix, mat, shape, inf, zeros
+import pandas
+from math import log
+from matplotlib import pyplot as plt
+from numpy import ones, matrix, mat, shape, inf, zeros, multiply, exp, sign
 
 def load_simple_data():
     datMat = matrix([[ 1. , 2.1],
@@ -11,6 +14,27 @@ def load_simple_data():
         [ 2. , 1. ]])
     classLabels = [1.0, 1.0, -1.0, -1.0, 1.0]
     return datMat,classLabels
+
+
+def visualize_simple_data():
+    """
+    visualize simple data by matplotlib
+    """
+    data, lbs = load_simple_data()
+    table = zeros((data.shape[0], 3))
+    table[:, :2] = data
+    table[:, 2:3] = mat(lbs).T
+
+    df = pandas.DataFrame(table, columns=['x', 'y', 'label'])
+    groups = df.groupby('label')
+
+    fig, ax = plt.subplots()
+    ax.margins(0.05)
+    for name, group in groups:
+        ax.plot(group.x, group.y, marker='o', linestyle='', ms=12, label=name)
+    ax.legend()
+
+    plt.show()
 
 
 def stump_classify(data_matrix, dimen, threshold, thresh_ineq):
@@ -56,3 +80,32 @@ def build_stump(data_arr, cls_labels, d):
                     best_stump['ineq'] = inequal
 
     return best_stump, min_error, best_cls_est
+
+
+def train_ds(data_arr, cls_lbs, num_it=40):
+    """
+    train data set
+    """
+    weak_cls_arr = []
+    row_size = shape(data_arr)[0]
+    # intialize equal weight matrix
+    D = mat(ones((row_size, 1))/row_size)
+    agg_cls_est = mat(zeros((row_size, 1)))
+    for i in xrange(num_it):
+        best_stump, err, cls_est = build_stump(data_arr, cls_lbs, D)
+        print "D:", D.T
+        alpha = float(0.5*log((1.0-err)/max(err, 1e-16)))
+        best_stump['alhpa'] = alpha
+        weak_cls_arr.append(best_stump)
+        print "classEst: ", cls_est.T
+        expon = mulitply(-1*alpha*mat(cls_lbs).T, cls_est)
+        D = multiply(D, exp(expon))
+        D = D/D.sum()
+        agg_cls_est += alpha * cls_est
+        print "agg class est: ", agg_cls_est.T
+        agg_errs = multiply(sign(agg_cls_est) != mat(cls_lbs).T, ones((row_size, 1)))
+        err_rate = agg_errs.sum() / row_size
+        print "total error:", err_rate, "\n"
+        if err_rate == 0.0: break
+
+    return weak_cls_arr
