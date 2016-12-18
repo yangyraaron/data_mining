@@ -95,10 +95,11 @@ def train_ds(data_arr, cls_lbs, num_it=40):
         best_stump, err, cls_est = build_stump(data_arr, cls_lbs, D)
         print "D:", D.T
         alpha = float(0.5*log((1.0-err)/max(err, 1e-16)))
-        best_stump['alhpa'] = alpha
+        best_stump['alpha'] = alpha
         weak_cls_arr.append(best_stump)
         print "classEst: ", cls_est.T
-        expon = mulitply(-1*alpha*mat(cls_lbs).T, cls_est)
+        expon = multiply(-1*alpha*mat(cls_lbs).T, cls_est)
+        print "expon", expon
         D = multiply(D, exp(expon))
         D = D/D.sum()
         agg_cls_est += alpha * cls_est
@@ -109,3 +110,38 @@ def train_ds(data_arr, cls_lbs, num_it=40):
         if err_rate == 0.0: break
 
     return weak_cls_arr
+
+
+def ada_classify(data_to_cls, classifier_arr):
+    """
+    classify data by adaboost
+    """
+    data_mat = mat(data_to_cls)
+    row_size = shape(data_mat)[0]
+    agg_cls_est = mat(zeros((row_size, 1)))
+    for i in xrange(len(classifier_arr)):
+        cls_est = stump_classify(data_mat, classifier_arr[i]['dim'], \
+                                 classifier_arr[i]['thresh'], \
+                                 classifier_arr[i]['ineq'])
+        agg_cls_est += classifier_arr[i]['alpha'] * cls_est
+        print 'classifer %d with agg cls est ' % i, agg_cls_est
+
+    return sign(agg_cls_est)
+
+
+def load_data_set(file_name):
+    """
+    load data set from file
+    """
+    num_feat = len(open(file_name).readline().split('\t'))
+    data_mat= []; lb_mat = []
+    fr = open(file_name)
+    for line in fr.readlines():
+        line_arr = []
+        cur_line = line.strip().split('\t')
+        for i in xrange(num_feat - 1):
+            line_arr.append(float(cur_line[i]))
+        data_mat.append(line_arr)
+        lb_mat.append(float(cur_line[-1]))
+
+    return data_mat, lb_mat
